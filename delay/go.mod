@@ -1,4 +1,4 @@
-module github.com/zirain/extensions/autocomplete-authority
+module github.com/zirain/extensions/delay
 
 go 1.24
 

@@ -13,10 +13,10 @@ clean:
 	$(RM) *.wasm
 	
 build: clean
-	$(foreach VERSION, $(VERSION_LIST), tinygo build -ldflags '-X main.injectionVersion=$(VERSION)' -o $(WASM_PLUGIN_NAME)-$(VERSION).wasm -scheduler=none -target=wasi plugin.go;)
+	$(foreach VERSION, $(VERSION_LIST), GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $(WASM_PLUGIN_NAME)-$(VERSION).wasm -ldflags '-X main.injectionVersion=$(VERSION)' plugin.go;)
 
 docker.build: build
-	$(foreach VERSION, $(VERSION_LIST), docker buildx build . -t $(DOCKER_IMAGE):$(VERSION) --build-arg WASM_BINARY=$(WASM_PLUGIN_NAME)-$(VERSION).wasm;)
+	$(foreach VERSION, $(VERSION_LIST), docker buildx build . -t $(DOCKER_IMAGE):$(VERSION) --build-arg WASM_BINARY=$(WASM_PLUGIN_NAME)-$(VERSION).wasm --load;)
 
 docker.push: docker.build
 	$(foreach VERSION, $(VERSION_LIST), docker push $(DOCKER_IMAGE):$(VERSION);)

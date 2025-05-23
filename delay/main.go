@@ -1,17 +1,11 @@
 package main
 
 import (
-	"os"
+	"encoding/json"
+	"time"
 
 	"github.com/proxy-wasm/proxy-wasm-go-sdk/proxywasm"
 	"github.com/proxy-wasm/proxy-wasm-go-sdk/proxywasm/types"
-)
-
-const (
-	podNamespaceEnv     = "POD_NAMESPACE"
-	requestPortSplit    = ":"
-	requertHostSPlit    = "."
-	requestAuthorityKey = ":AUTHORITY"
 )
 
 func main() {}
@@ -35,6 +29,7 @@ type pluginContext struct {
 	// Embed the default plugin context here,
 	// so that we don't need to reimplement all the methods.
 	types.DefaultPluginContext
+	delay *time.Duration
 }
 
 // Override types.DefaultPluginContext.
@@ -51,14 +46,24 @@ type httpContext struct {
 }
 
 var additionalHeaders = map[string]string{
-	"x-envoy-wasm-plugin": "display-metadata",
+	"x-envoy-wasm-plugin": "delay",
 }
 
 func (ctx *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPluginStartStatus {
-	_, err := proxywasm.GetPluginConfiguration()
+	data, err := proxywasm.GetPluginConfiguration()
 	if err != nil && err != types.ErrorStatusNotFound {
 		proxywasm.LogCriticalf("error reading plugin configuration: %v", err)
 		return types.OnPluginStartStatusFailed
+	}
+
+	var message map[string]string
+	if err := json.Unmarshal(data, &message); err == nil {
+		d, err := time.ParseDuration(message["delay"])
+		if err == nil {
+			ctx.delay = &d
+		}
+	} else {
+		proxywasm.LogCriticalf("error unmarshal configuration: %v", err)
 	}
 
 	return types.OnPluginStartStatusOK
@@ -84,18 +89,14 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	for _, h := range reqHeaders {
 		proxywasm.LogErrorf("request header: <%s: %s>", h[0], h[1])
 	}
-	return
 }
 
 func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	proxywasm.LogErrorf("OnHttpRequestHeaders")
 
-	ns := os.Getenv(podNamespaceEnv)
-	if ns == "" {
-		proxywasm.LogErrorf("pod namespace is empty")
-		return types.ActionContinue
-	}
-	proxywasm.LogErrorf("pod namespace is %s", ns)
+	// if ctx.pluginContext.delay != nil {
+	// 	time.Sleep(*ctx.pluginContext.delay)
+	// }
 
 	return types.ActionContinue
 }

@@ -11,10 +11,10 @@ clean:
 
 
 build: clean
-	tinygo build -o $(WASM_PLUGIN_NAME) -scheduler=none -target=wasi plugin.go
+	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $(WASM_PLUGIN_NAME) plugin.go
 
 docker.build: build
-	docker build -t $(DOCKER_IMAGE) . --build-arg WASM_BINARY=$(WASM_PLUGIN_NAME)
+	docker build -t $(DOCKER_IMAGE) . --build-arg WASM_BINARY=$(WASM_PLUGIN_NAME) --load
 
 docker.push: docker.build
 	docker push $(DOCKER_IMAGE)
